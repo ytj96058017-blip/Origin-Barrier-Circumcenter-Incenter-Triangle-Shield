@@ -9,7 +9,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Black+Han+Sans&family=Jua&family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@500;700;800&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
     
     <style>
-        body { font-family: 'Jua', 'Inter', sans-serif; }
+        body { 
+            font-family: 'Jua', 'Inter', sans-serif;
+            color: #f8fafc;
+            background-color: #020612;
+            margin: 0;
+            padding: 0;
+        }
+        .hidden { display: none !important; }
         .font-runic { font-family: 'Cinzel', 'Black Han Sans', serif; }
         .font-tech { font-family: 'Orbitron', sans-serif; }
         .font-mono-code { font-family: 'JetBrains Mono', monospace; }
@@ -358,7 +365,7 @@
                         <button onclick="submitTypeStep('circum')" class="flex-1 py-4 bg-gradient-to-b from-cyan-950 to-slate-900 hover:from-cyan-800 hover:to-blue-900 border-2 border-cyan-400 rounded-xl font-runic text-lg text-cyan-200 transition active:scale-95 shadow-lg">
                             🌐 외심 결계 (Circum)<br><span class="text-[11px] text-cyan-300/80 font-mono-code">세 변의 수직이등분선 · 세 꼭짓점 거리 동등</span>
                         </button>
-                        <button onclick="submitTypeStep('incenter')" class="flex-1 py-4 bg-gradient-to-b from-amber-950 to-slate-900 hover:from-amber-800 hover:to-yellow-900 border-2 border-amber-400 rounded-xl font-runic text-lg text-amber-200 transition active:scale-95 shadow-lg">
+                        <button onclick="submitTypeStep('incenter')" class="flex-1 py-4 bg-gradient-to-b from-amber-950 to-slate-900 hover:from-amber-800 hover:to-yellow-900 border-2 border-amber-400 rounded-xl font-runic text-lg text-cyan-200 transition active:scale-95 shadow-lg">
                             🛡️ 내심 결계 (Incenter)<br><span class="text-[11px] text-amber-300/80 font-mono-code">세 내각의 이등분선 · 세 변까지 거리 동등</span>
                         </button>
                     </div>
@@ -392,7 +399,8 @@
 
                     <!-- Step 3 Fire Button (Opens Payload Modal) -->
                     <div id="fire-barrier-control" class="hidden flex flex-col items-center gap-2 w-full max-w-md">
-                        <button onclick="openPayloadModal()" class="w-full py-4 bg-gradient-to-r from-cyan-400 via-amber-400 to-yellow-400 hover:from-cyan-300 hover:to-yellow-300 text-slate-950 font-runic text-xl md:text-2xl rounded-2xl shadow-xl border-2 border-white active:scale-95 transition animate-pulse flex items-center justify-center gap-2">
+                        <!-- ★ 연타 방지 가드 적용: id="fire-action-btn" 추가 -->
+                        <button id="fire-action-btn" onclick="openPayloadModal()" class="w-full py-4 bg-gradient-to-r from-cyan-400 via-amber-400 to-yellow-400 hover:from-cyan-300 hover:to-yellow-300 text-slate-950 font-runic text-xl md:text-2xl rounded-2xl shadow-xl border-2 border-white active:scale-95 transition animate-pulse flex items-center justify-center gap-2">
                             <span>⚡</span><span>오리진 배리어 전개 & 반격 펄스! (DEFEND & REFLECT! 💥)</span>
                         </button>
                         <span class="text-xs text-yellow-200 font-semibold font-mono-code">> 삼각형 결계 100% 완전 동기화! 전술 펄스를 방출하세요!</span>
@@ -617,8 +625,6 @@
         }
         const sfx = new SoundFX();
     </script>
-
-    <!-- Main Game Logic and Firebase Synchronizer -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeFirestore, memoryLocalCache, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -675,6 +681,9 @@
         let mistWipesRemaining = 5;
         let lastRenderedStage = -1;
         let lastRenderedWave = -1;
+
+        // ★ [연타 방지 가드 플래그] 4단계 결계 격발 버튼 중복 클릭 방지
+        let isActionProcessing = false;
 
         /*
            중2 기하 핵심 교육과정: 외심(O) & 내심(I) 5대 웨이브
@@ -746,7 +755,6 @@
                 } else if (wIdx === 3) {
                     // Wave 3: Right triangle circumcenter (Midpoint of hypotenuse)
                     targetType = 'circum';
-                    // Pythagorean triples: (6, 8, 10), (8, 15, 17), (5, 12, 13), (9, 12, 15), (10, 24, 26)
                     const triples = [
                         { a: 6, b: 8, c: 10 },
                         { a: 5, b: 12, c: 13 },
@@ -770,11 +778,6 @@
                 } else if (wIdx === 4) {
                     // Wave 4: Incircle Area formula: S = 1/2 * r * (a + b + c)
                     targetType = 'incenter';
-                    // Right triangles where r is an integer!
-                    // (3, 4, 5) -> r = 1
-                    // (6, 8, 10) -> r = 2
-                    // (5, 12, 13) -> r = 2
-                    // (9, 12, 15) -> r = 3
                     const rTriples = [
                         { a: 6, b: 8, c: 10, r: 2, s: 24 },
                         { a: 5, b: 12, c: 13, r: 2, s: 30 },
@@ -797,10 +800,6 @@
 
                 } else {
                     // Wave 5: Hybrid Ancient Titan Boss (∠BOC and ∠BIC simultaneous analysis)
-                    // If ∠A = 60°, ∠BOC = 120°, ∠BIC = 120°
-                    // If ∠A = 40°, ∠BOC = 80°, ∠BIC = 110° -> diff = 30°
-                    // If ∠A = 70°, ∠BOC = 140°, ∠BIC = 125° -> diff = 15°
-                    // If ∠A = 80°, ∠BOC = 160°, ∠BIC = 130° -> diff = 30°
                     const bossAngles = [
                         { a: 40, boc: 80, bic: 110, diff: 30 },
                         { a: 50, boc: 100, bic: 115, diff: 15 },
@@ -810,7 +809,7 @@
                     const chosen = bossAngles[Math.floor(Math.random() * bossAngles.length)];
                     angleA = chosen.a;
                     targetValue = chosen.diff;
-                    targetType = 'circum'; // Boss requires dual mastery, start with outer circumcenter!
+                    targetType = 'circum';
 
                     clueText = `[👾 고대 타이탄 보스] 삼각형 ABC의 [∠A = ${angleA}°] 일 때, 외심각 ∠BOC와 내심각 ∠BIC의 [각도 차이 |∠BOC - ∠BIC|] 를 도출하라!`;
                     formulaChoices = [
@@ -963,18 +962,16 @@
         }
 
         window.joinTeam = async function(team) {
-            const nameInput = document.getElementById('player-name');
-            const codeInput = document.getElementById('room-code');
-            const name = (nameInput ? nameInput.value.trim() : '') || `수호관_${Math.floor(Math.random()*900+100)}`;
-            const code = (codeInput ? codeInput.value.trim() : '') || 'origin201';
+            const name = document.getElementById('player-name').value.trim() || `수호관_${Math.floor(Math.random()*900+100)}`;
+            const code = document.getElementById('room-code').value.trim() || 'origin201';
 
             currentUserName = name;
             currentRoomCode = code;
             myTeam = team;
+            isActionProcessing = false;
 
             const myMemberObj = { id: myPlayerId, name: currentUserName, lastSeen: Date.now(), joinedAt: myJoinedAt };
 
-            // BroadcastChannel for instant free zero-latency local sync
             try {
                 if (window.BroadcastChannel) {
                     if (bc) bc.close();
@@ -982,7 +979,7 @@
                     bc.onmessage = (event) => {
                         const msg = event.data;
                         if (!msg) return;
-                        if (msg.type === 'LOCAL_PING' && msg.team === myTeam) {
+                        if (msg.type === 'LOCAL_PING' && (myTeam === 'spectator' || msg.team === myTeam)) {
                             addTacticalPingCoords(msg.x, msg.y, msg.sender);
                         } else if (msg.type === 'SYNC_STATE' && msg.payload) {
                             applyRoomState(msg.payload);
@@ -1001,7 +998,6 @@
             else initialData.redMembers = [myMemberObj];
             applyRoomState(initialData);
 
-            // Register upon join to Firestore top-level collection
             try {
                 if (db) {
                     const roomRef = doc(db, 'origin_barrier_rooms', currentRoomCode);
@@ -1025,7 +1021,6 @@
             window.addEventListener('beforeunload', leaveRoomCleanup);
         };
 
-        // Teacher Spectator / Broadcaster Entry Function
         window.joinSpectator = async function() {
             const codeInput = document.getElementById('room-code');
             const code = (codeInput ? codeInput.value.trim() : '') || 'origin201';
@@ -1033,6 +1028,7 @@
             currentUserName = '교사 중계석';
             currentRoomCode = code;
             myTeam = 'spectator';
+            isActionProcessing = false;
 
             try {
                 if (window.BroadcastChannel) {
@@ -1072,7 +1068,7 @@
         };
 
         async function leaveRoomCleanup() {
-            if (!currentRoomCode || !myTeam || !db) return;
+            if (!currentRoomCode || !myTeam || myTeam === 'spectator' || !db) return;
             try {
                 const roomRef = doc(db, 'origin_barrier_rooms', currentRoomCode);
                 const snap = await getDoc(roomRef);
@@ -1119,13 +1115,11 @@
             data.redMembers = cleanMemberList(data.redMembers || []);
             lastKnownRoomData = data;
 
-            // Handle Reflection Shockwave
             if (data.lastReflect && (!window.lastObservedReflectId || window.lastObservedReflectId !== data.lastReflect.id)) {
                 window.lastObservedReflectId = data.lastReflect.id;
                 triggerBarrierReflectEvent(data.lastReflect);
             }
 
-            // Handle Tactical Ping
             if (data.lastPing && (!window.lastObservedPingId || window.lastObservedPingId !== data.lastPing.id)) {
                 window.lastObservedPingId = data.lastPing.id;
                 if (myTeam === 'spectator' || data.lastPing.team === myTeam) {
@@ -1133,7 +1127,6 @@
                 }
             }
 
-            // Handle Void Mist EMP
             if (data.mistTarget === myTeam && (!window.lastObservedMistId || window.lastObservedMistId !== data.mistId)) {
                 window.lastObservedMistId = data.mistId;
                 activateMistCover();
@@ -1221,7 +1214,6 @@
                 `;
             }
         }
-
         function updatePipelineUI(data) {
             const team = myTeam;
 
@@ -1257,10 +1249,8 @@
                 const rMembers = cleanMemberList(data.redMembers || []);
                 const bStage = data.blueStage || 0;
                 const rStage = data.redStage || 0;
-                const bScore = data.blueScore || 0;
-                const rScore = data.redScore || 0;
-                const bWave = Math.min(5, bScore + 1);
-                const rWave = Math.min(5, rScore + 1);
+                const bWave = Math.min(5, (data.blueScore || 0) + 1);
+                const rWave = Math.min(5, (data.redScore || 0) + 1);
 
                 const bActorIdx = getStageActorIndex(bStage, Math.max(1, bMembers.length), bWave);
                 const rActorIdx = getStageActorIndex(rStage, Math.max(1, rMembers.length), rWave);
@@ -1268,24 +1258,24 @@
                 const specBWave = document.getElementById('spec-blue-wave');
                 const specBStage = document.getElementById('spec-blue-stage');
                 const specBActor = document.getElementById('spec-blue-actor');
-                if (specBWave) specBWave.innerText = `웨이브 #${bWave}/5 (${bScore}회 방어)`;
+                if (specBWave) specBWave.innerText = `웨이브 #${bWave}/5`;
                 if (specBStage) specBStage.innerText = stageNames[bStage] || '대기 중';
                 if (specBActor) specBActor.innerText = `현재 주자: ${bMembers[bActorIdx] ? bMembers[bActorIdx].name : '대기 중'}`;
 
                 const specRWave = document.getElementById('spec-red-wave');
                 const specRStage = document.getElementById('spec-red-stage');
                 const specRActor = document.getElementById('spec-red-actor');
-                if (specRWave) specRWave.innerText = `웨이브 #${rWave}/5 (${rScore}회 방어)`;
+                if (specRWave) specRWave.innerText = `웨이브 #${rWave}/5`;
                 if (specRStage) specRStage.innerText = stageNames[rStage] || '대기 중';
                 if (specRActor) specRActor.innerText = `현재 주자: ${rMembers[rActorIdx] ? rMembers[rActorIdx].name : '대기 중'}`;
 
                 const instEl = document.getElementById('step-instruction');
                 if (instEl) {
-                    instEl.innerHTML = `<span class="text-yellow-300">📡 [실시간 중계 중] 양 팀의 기하 결계 수호 작전을 관전하고 있습니다.</span>`;
+                    instEl.innerHTML = `<span class="text-yellow-300">📡 [실시간 중계 중] 양 팀의 삼각형 기하 결계 현황을 관전하고 있습니다.</span>`;
                 }
 
                 // Display leading team's mission in clue box
-                const leadMission = bScore >= rScore ? data.blueMission : data.redMission;
+                const leadMission = (data.blueScore || 0) >= (data.redScore || 0) ? data.blueMission : data.redMission;
                 if (leadMission) {
                     const clueEl = document.getElementById('clue-display');
                     if (clueEl) clueEl.innerText = `[선두팀 힌트] ${leadMission.clueText}`;
@@ -1338,10 +1328,10 @@
 
             const teamBadge = document.getElementById('my-team-badge');
             if (team === 'blue') {
-                teamBadge.innerText = `🔵 AQUA ORIGIN [WAVE #${targetNum}/5]`;
+                teamBadge.innerText = `🔵 AQUA BARRIER [WAVE #${targetNum}/5]`;
                 teamBadge.className = 'text-xs px-3.5 py-1 bg-cyan-500/25 text-cyan-300 border border-cyan-400 rounded-full font-bold font-runic';
             } else {
-                teamBadge.innerText = `🔴 SOLAR ORIGIN [WAVE #${targetNum}/5]`;
+                teamBadge.innerText = `🔴 SOLAR BARRIER [WAVE #${targetNum}/5]`;
                 teamBadge.className = 'text-xs px-3.5 py-1 bg-amber-500/25 text-amber-300 border border-amber-400 rounded-full font-bold font-runic';
             }
 
@@ -1365,7 +1355,7 @@
                     ? 'text-xs px-3.5 py-1 bg-yellow-400 text-slate-950 border-2 border-yellow-300 rounded-full font-runic font-bold animate-pulse'
                     : 'text-xs px-3.5 py-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded-full font-bold font-mono-code';
             } else {
-                roleBadge.innerText = "사령부 관전 중";
+                roleBadge.innerText = "신전 사령부 관전 중";
             }
 
             const instEl = document.getElementById('step-instruction');
@@ -1377,7 +1367,6 @@
             const currentActorEl = document.getElementById('current-actor-name');
             const stepNumInput = document.getElementById('step-number-input');
 
-            // Prevent input auto-clearing unless stage actually changes
             const isStageChanged = (lastRenderedStage !== currentStage || lastRenderedWave !== targetNum);
             lastRenderedStage = currentStage;
             lastRenderedWave = targetNum;
@@ -1452,7 +1441,7 @@
                                   <div class="text-[11px] mt-1 ${isThisMine ? 'text-yellow-300 font-bold' : 'text-slate-400'}">담당: ${stageActorName}${isThisMine ? ' (나)' : ''}</div>`;
 
                 if (s === currentStage) {
-                    card.className = "p-2.5 rounded-xl border-2 transition-all bg-cyan-400/20 border-cyan-300 text-yellow-300 font-bold animate-pulse shadow-lg";
+                    card.className = "p-2.5 rounded-xl border-2 transition-all bg-amber-400/20 border-amber-300 text-yellow-300 font-bold animate-pulse shadow-lg";
                 } else if (s < currentStage) {
                     card.className = "p-2.5 rounded-xl border transition-all bg-cyan-950/60 border-cyan-500/60 text-cyan-300 font-semibold";
                 } else {
@@ -1545,12 +1534,28 @@
         };
 
         window.openPayloadModal = function() {
+            // ★ [연타 방지 가드 1] 이미 처리 중이면 모달 오픈 차단
+            if (isActionProcessing) return;
             document.getElementById('payload-modal').classList.remove('hidden');
         };
 
         window.choosePayload = async function(payloadType) {
+            // ★ [연타 방지 가드 2] 즉시 잠금 설정 및 버튼 비활성화
+            if (isActionProcessing) return;
+            isActionProcessing = true;
+
+            const fireActionBtn = document.getElementById('fire-action-btn');
+            if (fireActionBtn) {
+                fireActionBtn.disabled = true;
+                fireActionBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
             document.getElementById('payload-modal').classList.add('hidden');
-            if (!lastKnownRoomData) return;
+            if (!lastKnownRoomData) {
+                isActionProcessing = false;
+                return;
+            }
+
             const data = lastKnownRoomData;
             const enemyTeam = myTeam === 'blue' ? 'red' : 'blue';
             const mission = myTeam === 'blue' ? data.blueMission : data.redMission;
@@ -1593,6 +1598,7 @@
 
                 sfx.barrierIgnite();
                 hitData.updatedAt = Date.now();
+                isActionProcessing = false;
                 await syncStateUpdate(hitData);
             }, 850);
 
@@ -1656,9 +1662,6 @@
             }, 1000);
         }
 
-        // ==========================================
-        // 🚀 GEOMETRIC ORIGIN TRIANGLE 2D CANVAS ENGINE
-        // ==========================================
         let canvas, ctx;
         let tacticalPings = [];
         let shockwaves = [];
@@ -1667,6 +1670,7 @@
 
         function initBarrierCanvas() {
             canvas = document.getElementById('barrier-canvas');
+            if (!canvas) return;
             ctx = canvas.getContext('2d');
             resizeBarrierCanvas();
             window.addEventListener('resize', resizeBarrierCanvas);
@@ -1766,7 +1770,6 @@
                 });
             }
 
-            // Screen shake
             const arenaBox = canvas.parentElement;
             if (arenaBox) {
                 arenaBox.classList.remove('screen-shaking');
@@ -1800,11 +1803,9 @@
             const midY = h / 2;
             const scale = Math.min(w, h) * 0.36;
 
-            // 1. Ancient Deep Space Runic Background
             ctx.fillStyle = '#020612';
             ctx.fillRect(0, 0, w, h);
 
-            // Sacred Runic Ring Backdrop
             ctx.save();
             ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
             ctx.lineWidth = 1;
@@ -1818,21 +1819,18 @@
             ctx.setLineDash([]);
             ctx.restore();
 
-            // 2. Render Geometric Sanctuary Triangle & Dynamic Outer/Inner Barrier
             if (lastKnownRoomData) {
                 const mission = myTeam === 'spectator'
                     ? ((lastKnownRoomData.blueScore || 0) >= (lastKnownRoomData.redScore || 0) ? lastKnownRoomData.blueMission : lastKnownRoomData.redMission)
                     : (myTeam === 'blue' ? lastKnownRoomData.blueMission : lastKnownRoomData.redMission);
                 const currentStage = myTeam === 'spectator'
-                    ? ((lastKnownRoomData.blueScore || 0) >= (lastKnownRoomData.redScore || 0) ? (lastKnownRoomData.blueStage || 0) : (lastKnownRoomData.redStage || 0))
+                    ? ((lastKnownRoomData.blueScore || 0) >= (lastKnownRoomData.redScore || 0) ? lastKnownRoomData.blueStage || 0 : lastKnownRoomData.redStage || 0)
                     : (myTeam === 'blue' ? (lastKnownRoomData.blueStage || 0) : (lastKnownRoomData.redStage || 0));
                 drawSanctuaryTriangleGeometry(midX, midY, scale, mission, currentStage);
             }
 
-            // 3. Opponent PiP Mini Feed (Top Right)
             drawOpponentMiniFeed(w - 135, 45);
 
-            // 4. Shockwaves
             for (let i = shockwaves.length - 1; i >= 0; i--) {
                 const sw = shockwaves[i];
                 sw.radius += 5.5;
@@ -1852,7 +1850,6 @@
                 if (sw.alpha <= 0 || sw.radius >= sw.maxRadius) shockwaves.splice(i, 1);
             }
 
-            // 5. Counter Beams
             for (let i = counterBeams.length - 1; i >= 0; i--) {
                 const ray = counterBeams[i];
                 ray.progress += 0.07;
@@ -1873,7 +1870,6 @@
                 if (ray.progress >= 1) counterBeams.splice(i, 1);
             }
 
-            // 6. Tactical Pings
             for (let i = tacticalPings.length - 1; i >= 0; i--) {
                 const p = tacticalPings[i];
                 p.radius += 0.9;
@@ -1895,7 +1891,6 @@
                 if (p.alpha <= 0) tacticalPings.splice(i, 1);
             }
 
-            // 7. Sparks
             for (let i = sparks.length - 1; i >= 0; i--) {
                 const sp = sparks[i];
                 sp.x += sp.vx;
@@ -1913,6 +1908,7 @@
                 if (sp.alpha <= 0) sparks.splice(i, 1);
             }
 
+            ctx.restore();
             requestAnimationFrame(renderBarrierLoop);
         }
 
@@ -1921,23 +1917,19 @@
 
             ctx.save();
 
-            // Triangle Vertices A (Top), B (Bottom Left), C (Bottom Right)
             let ptA, ptB, ptC;
             const wIdx = mission.waveIndex;
 
             if (wIdx === 3) {
-                // Right triangle at B: AB perpendicular to BC
                 ptB = { x: cx - R * 0.9, y: cy + R * 0.65 };
                 ptC = { x: cx + R * 0.9, y: cy + R * 0.65 };
                 ptA = { x: cx - R * 0.9, y: cy - R * 0.65 };
             } else {
-                // Acute triangle
                 ptA = { x: cx, y: cy - R * 0.85 };
                 ptB = { x: cx - R * 0.95, y: cy + R * 0.7 };
                 ptC = { x: cx + R * 0.95, y: cy + R * 0.7 };
             }
 
-            // 1. Draw Sacred Triangle Body
             ctx.strokeStyle = '#38bdf8';
             ctx.lineWidth = 3;
             ctx.shadowBlur = 14;
@@ -1951,31 +1943,25 @@
             ctx.fill();
             ctx.stroke();
 
-            // Right-angle marker if Wave 3
             if (wIdx === 3) {
                 ctx.strokeStyle = '#facc15';
                 ctx.lineWidth = 1.5;
                 ctx.strokeRect(ptB.x, ptB.y - 14, 14, 14);
             }
 
-            // Draw Vertex Beacons A, B, C
             drawSanctuaryNode(ptA.x, ptA.y, `A (${mission.angleA ? mission.angleA + '°' : 'A'})`);
             drawSanctuaryNode(ptB.x, ptB.y, "B");
             drawSanctuaryNode(ptC.x, ptC.y, "C");
 
-            // 2. Stage-by-Stage Runic Assembly: Circumcenter (O) vs Incenter (I)
             const isCircum = mission.targetType === 'circum';
             let centerPt;
 
             if (wIdx === 3) {
-                // Circumcenter is the midpoint of hypotenuse AC!
                 centerPt = { x: (ptA.x + ptC.x) / 2, y: (ptA.y + ptC.y) / 2 };
             } else {
-                // Approximate circumcenter / incenter near center
                 centerPt = isCircum ? { x: cx, y: cy + R * 0.08 } : { x: cx, y: cy + R * 0.18 };
             }
 
-            // Stage 0: Threat indicator (Incoming Void Vector)
             const pulseThreat = Math.sin(Date.now() / 180) * 8;
             const threatDist = R * 1.35 + pulseThreat;
             const threatX = cx + Math.cos(-Math.PI / 3) * threatDist;
@@ -1990,7 +1976,6 @@
             ctx.fillStyle = '#fca5a5';
             ctx.fillText(mission.waveIndex === 5 ? "타이탄 보스" : `보이드 침공 #${mission.waveIndex}`, threatX, threatY + 20);
 
-            // Stage >= 1: Runic Bisector Guide Lines (NO Spoilers: only faint construction guides)
             if (currentStage >= 1) {
                 ctx.save();
                 ctx.strokeStyle = isCircum ? 'rgba(56, 189, 248, 0.45)' : 'rgba(245, 158, 11, 0.45)';
@@ -1998,7 +1983,6 @@
                 ctx.setLineDash([5, 5]);
 
                 if (isCircum) {
-                    // Perpendicular bisector faint lines from sides
                     ctx.beginPath();
                     ctx.moveTo((ptB.x + ptC.x) / 2, ptB.y);
                     ctx.lineTo(centerPt.x, centerPt.y);
@@ -2006,7 +1990,6 @@
                     ctx.lineTo(centerPt.x, centerPt.y);
                     ctx.stroke();
                 } else {
-                    // Angle bisector faint lines from vertices
                     ctx.beginPath();
                     ctx.moveTo(ptB.x, ptB.y);
                     ctx.lineTo(centerPt.x, centerPt.y);
@@ -2018,7 +2001,6 @@
                 ctx.restore();
             }
 
-            // Stage >= 2: Center Node (O or I) Ignition
             if (currentStage >= 2) {
                 ctx.save();
                 const nodeColor = isCircum ? '#38bdf8' : '#f59e0b';
@@ -2033,7 +2015,6 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // Lines from center to B and C to indicate center angle ∠BOC or ∠BIC
                 ctx.strokeStyle = nodeColor;
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -2048,7 +2029,6 @@
                 ctx.textAlign = 'center';
                 ctx.fillText(isCircum ? "외심 O" : "내심 I", centerPt.x, centerPt.y - 14);
 
-                // Angle arc at center
                 ctx.strokeStyle = '#facc15';
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
@@ -2057,13 +2037,12 @@
                 ctx.restore();
             }
 
-            // Stage >= 3: 100% Fully Synchronized Circumcircle / Incircle Barrier Ignition!
             if (currentStage >= 3) {
                 ctx.save();
                 const barrierColor = isCircum ? '#38bdf8' : '#f59e0b';
                 const barrierRadius = isCircum 
-                    ? Math.hypot(centerPt.x - ptA.x, centerPt.y - ptA.y) // Circumcircle passes vertices A, B, C!
-                    : R * 0.45; // Incircle touches three sides!
+                    ? Math.hypot(centerPt.x - ptA.x, centerPt.y - ptA.y) 
+                    : R * 0.45;
 
                 ctx.strokeStyle = barrierColor;
                 ctx.lineWidth = 4.5;
@@ -2073,7 +2052,6 @@
                 ctx.arc(centerPt.x, centerPt.y, barrierRadius, 0, Math.PI * 2);
                 ctx.stroke();
 
-                // Rotating Runic Barrier Shield Marks
                 ctx.lineWidth = 1.5;
                 ctx.setLineDash([12, 10]);
                 ctx.beginPath();
